@@ -47,3 +47,7 @@ this ID, then you use the ID + counter to construct the key. But we have gained 
 ### Clearing a specific user from cache
 If we want to clear cache for a specific user, the only thing we have to do is incrementing the counter in counter:userID:12543. 
 This will change all keys that use this user ID. The old cached values will not be used anymore and eventually cleaned up.
+
+## Decreasing overhead
+
+It is not very efficient to have to fetch multiple keys from memcached to read only one entry. There is a way to make this more efficient, especially if clearing is infrequent. What we do is keeping one central master counter that we can use for all namespaces, unless they have changed. This of cource transfers the problem to keeping track of touched namespaces. If namespace changes are uncommon, we can do this in an efficient way. We store some data with the default counter called Evidence. The amount of data used for evidence can change, but for the example, we'll use 8 bytes (64 bits). At start, the bytes are all blank: 0000000000000000. Now if we want to increase the namespace for user ID 12543, we will flip a bit that corresponds to this number. The easiest way it taking the modulo: 12543 % 64 = 63. So we set bit 63 to 1: 0000000000000001.
