@@ -10,6 +10,7 @@ namespace CacheNamespacer
 {
     public interface INamespacer
     {
+        string GetNamespaced(string value);
         string GetNamespaced(string field, int value);
         void ClearCache(string field, int value);
         void ClearCache(string field);
@@ -17,6 +18,7 @@ namespace CacheNamespacer
     }
     public class Namespacer : INamespacer
     {
+        private const string UNCOMMONSEPARATOR = "ϯϯ"; // unicode 03ef = COPTIC SMALL LETTER DEI 
         IMemcachedClient _cache;
         NamespacerOptions _opt = new NamespacerOptions();
         public Namespacer(IMemcachedClient cache, NamespacerOptions options = null) 
@@ -25,14 +27,16 @@ namespace CacheNamespacer
             if(options!=null) _opt = options;
         }
 
-        public void ClearCache(string field)
+        public void ClearCache(string value)
         {
-            throw new NotImplementedException();
+            string storeKey = counterStoreKey(value);
+            _cache.Increment(storeKey, 1, 1);
         }
 
         public void ClearCache(string field, int value)
         {
-            string storeKey = counterStoreKey(field, value);
+            string combined = combinedFieldAndValue(field, value);
+            string storeKey = counterStoreKey(combined);
             _cache.Increment(storeKey, 1, 1);
         }
 
@@ -43,25 +47,30 @@ namespace CacheNamespacer
 
         public string GetNamespaced(string field, int value)
         {
-            uint counter = getCurrentCounter(field, value);
-            return namespacedKey(field, value, counter);
-
+            string combined = combinedFieldAndValue(field, value);
+            return GetNamespaced(combined);
         }
 
-        private uint getCurrentCounter(string field, int value)
+        public string GetNamespaced(string value)
+        {
+            uint counter = getCurrentCounter(value);
+            return namespacedKey(value, counter);
+        }
+
+        private uint getCurrentCounter(string value)
         {
             if (_opt.OptimizeWithDefaultCounterAndEvidence)
             {
-                return optimizedGetCurrentCounter(field, value);
+                return optimizedGetCurrentCounter(value);
             }
             else
             {
                 uint start = getCounterStart();
-                return simpleGetCurrentCounter(field, value, start);
+                return simpleGetCurrentCounter(value, start);
             }
         }
 
-        private uint optimizedGetCurrentCounter(string field, int value)
+        private uint optimizedGetCurrentCounter(string value)
         {
             string evidenceKey = getEvidenceKey();
             byte[] evidenceData = _cache.Get<byte[]>(evidenceKey);
@@ -74,18 +83,31 @@ namespace CacheNamespacer
             {
                 evidence = new Evidence(evidenceData);
             }
-            if (!evidence.For(value))
+            if (!evidence.For(GetStringHash(value)))
             {
                 return evidence.DefaultCounter;
             }
             // check evidence with value
             // return default or return current counter
-            return simpleGetCurrentCounter(field, value, getCounterStart());
+            return simpleGetCurrentCounter(value, getCounterStart());
         }
 
-        private uint simpleGetCurrentCounter(string field, int value, uint startCounter)
+        // found this hashing function at http://stackoverflow.com/questions/9545619/a-fast-hash-function-for-string-in-c-sharp
+        // TODO: see if we can have a more lightweight hash function (but not String.GetHashcode for compatibility between platforms)
+        private int GetStringHash(string value)
         {
-            string storeKey = counterStoreKey(field, value);
+            UInt64 hashedValue = 3074457345618258791ul;
+            for (int i = 0; i < value.Length; i++)
+            {
+                hashedValue += value[i];
+                hashedValue *= 3074457345618258799ul;
+            }
+            return (int)hashedValue;
+        }
+
+        private uint simpleGetCurrentCounter(string value, uint startCounter)
+        {
+            string storeKey = counterStoreKey(value);
             object counter;
             if (!_cache.TryGet(storeKey, out counter))
             {
@@ -100,19 +122,25 @@ namespace CacheNamespacer
             return (uint)(DateTime.Now - DateTime.Today).TotalMilliseconds;
         }
 
-        private string namespacedKey(string field, int value, object counter)
+        private string namespacedKey(string value, object counter)
         {
-            return String.Format("{0}v::{1}::{2}::{3}", _opt.Prefix, field, value, counter);
+            return String.Format("{1}v{0}{2}{0}{3}", UNCOMMONSEPARATOR, _opt.Prefix, value, counter);
         }
 
-        private string counterStoreKey(string field, int value)
+        private string counterStoreKey(string value)
         {
-            return String.Format("{0}nss::{1}::{2}", _opt.Prefix, field, value);
+            return String.Format("{1}nss{0}{2}", UNCOMMONSEPARATOR, _opt.Prefix, value);
         }
+        private string combinedFieldAndValue(string field, int value)
+        {
+            return field + UNCOMMONSEPARATOR + value.ToString();
+        }
+
 
         private string getEvidenceKey()
         {
             return String.Format("{0}ev", _opt.Prefix);
         }
+
     }
 }

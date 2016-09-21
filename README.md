@@ -21,6 +21,9 @@ as 12543. At some point in time, the cache could contain:
  interests, but you cannot clear the combination of all product ID's with the user. If you would like to reset all cached data 
  for a specific product, you run into the same problem: you do not know which users may have this stored in cache and you cannot 
  feasably clear this key for all users.
+
+### Doing it yourself
+
  With namespacing of your keys, you effectively change the ID of a user when used in a cache key. The procedure is simple: for each 
  ID you want to use in your keys, you store a counter in cache. Initially this could be a random number. Then when you want to 
  construct a cache key containing a user ID, you use a combination of the user ID and the counter, which is specific fot 
