@@ -21,6 +21,39 @@ namespace CacheNamespacer
         private const string UNCOMMONSEPARATOR = "ϯϯ"; // unicode 03ef = COPTIC SMALL LETTER DEI 
         IMemcachedClient _cache;
         NamespacerOptions _opt = new NamespacerOptions();
+
+        Evidence _evidence;
+
+        public Evidence Evidence
+        {
+            get
+            {
+                if (_evidence != null) return _evidence;
+
+                string evidenceKey = getEvidenceKey();
+                byte[] evidenceData = _cache.Get<byte[]>(evidenceKey);
+                if (evidenceData == null)
+                {
+                    _evidence = new Evidence(getCounterStart(), _opt.EvidenceSize);
+                    SaveEvidence();
+                }
+                else
+                {
+                    _evidence = new Evidence(evidenceData);
+                }
+                return _evidence;
+            }
+        }
+        private void SaveEvidence()
+        {
+            if(_evidence != null)
+            {
+                string evidenceKey = getEvidenceKey();
+                byte[] data =_evidence.ToBytes();
+                _cache.Store(StoreMode.Set, evidenceKey, data);
+            }
+        }
+
         public Namespacer(IMemcachedClient cache, NamespacerOptions options = null) 
         {
             _cache = cache;
@@ -30,14 +63,16 @@ namespace CacheNamespacer
         public void ClearCache(string value)
         {
             string storeKey = counterStoreKey(value);
-            _cache.Increment(storeKey, 1, 1);
+            _cache.Increment(storeKey, this.Evidence.DefaultCounter + 1, 1);
+
+            Evidence.Witness(GetStringHash(value));
+            SaveEvidence();
         }
 
         public void ClearCache(string field, int value)
         {
             string combined = combinedFieldAndValue(field, value);
-            string storeKey = counterStoreKey(combined);
-            _cache.Increment(storeKey, 1, 1);
+            ClearCache(combined);
         }
 
         public void ClearCacheRolling()
@@ -72,17 +107,7 @@ namespace CacheNamespacer
 
         private uint optimizedGetCurrentCounter(string value)
         {
-            string evidenceKey = getEvidenceKey();
-            byte[] evidenceData = _cache.Get<byte[]>(evidenceKey);
-            Evidence evidence;
-            if(evidenceData == null)
-            {
-                evidence = new Evidence(getCounterStart(), _opt.EvidenceSize);
-            }
-            else
-            {
-                evidence = new Evidence(evidenceData);
-            }
+            Evidence evidence = this.Evidence;
             if (!evidence.For(GetStringHash(value)))
             {
                 return evidence.DefaultCounter;
