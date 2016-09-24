@@ -167,5 +167,9 @@ namespace CacheNamespacer
             return String.Format("{0}ev", _opt.Prefix);
         }
 
+        protected virtual DateTime Now()
+        {
+            return DateTime.Now;
+        }
     }
 }
