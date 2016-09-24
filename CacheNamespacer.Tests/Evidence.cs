@@ -36,6 +36,29 @@ namespace CacheNamespacer.Tests
             Assert.IsTrue(ev.For(10000));
         }
         [TestMethod]
+        public void QualityDecreases()
+        {
+            var ev = new Evidence(1, 80);
+            float q = ev.Quality;
+            Assert.AreEqual(1, q);
+            ev.Witness(10000);
+            q = ev.Quality;
+            Assert.IsTrue(q < 1);
+        }
+        [TestMethod]
+        public void QualityStillOkAfter200Witnesses()
+        {
+            var ev = new Evidence(1, 80);
+            Random rnd = new Random(1);
+            for (int i = 0; i < 200; i++)
+            {
+                ev.Witness(rnd.Next(1000000));
+
+            }
+            float q = ev.Quality;
+            Assert.IsTrue(q > .7);
+        }
+        [TestMethod]
         public void EvidenceIsNotFound_ForModuloLength()
         {
             var ev = new Evidence(1, 80);

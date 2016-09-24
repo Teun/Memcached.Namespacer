@@ -36,7 +36,7 @@ namespace CacheNamespacer.Tests
             init();
 
             string key1 = ns.GetNamespaced("userId", 1234);
-            ns.ClearCache("userId", 1234);
+            ns.UpdateNamespace("userId", 1234);
 
             string key2 = ns.GetNamespaced("userId", 1234);
 
@@ -48,7 +48,7 @@ namespace CacheNamespacer.Tests
             init();
 
             string key1 = ns.GetNamespaced("leaderBoard");
-            ns.ClearCache("leaderBoard");
+            ns.UpdateNamespace("leaderBoard");
 
             string key2 = ns.GetNamespaced("leaderBoard");
 
@@ -60,8 +60,8 @@ namespace CacheNamespacer.Tests
             init();
 
             string key1 = ns.GetNamespaced("userId", 1234);
-            ns.ClearCache("schoolId", 1234);
-            ns.ClearCache("userId", 1235);
+            ns.UpdateNamespace("schoolId", 1234);
+            ns.UpdateNamespace("userId", 1235);
 
             string key2 = ns.GetNamespaced("userId", 1234);
 

@@ -19,7 +19,7 @@ namespace CacheNamespacer.Tests
             string found = cache.Get<String>(ns.GetNamespaced("userId", 1234));
             Assert.IsNotNull(found);
 
-            ns.ClearCache("userId", 1234);
+            ns.UpdateNamespace("userId", 1234);
             key = ns.GetNamespaced("userId", 1234);
             found = cache.Get<String>(ns.GetNamespaced("userId", 1234));
             Assert.IsNull(found);
@@ -29,7 +29,7 @@ namespace CacheNamespacer.Tests
             found = cache.Get<String>(ns.GetNamespaced("userId", 1234));
             Assert.IsNotNull(found);
 
-            ns.ClearCache("userId", 1234);
+            ns.UpdateNamespace("userId", 1234);
             key = ns.GetNamespaced("userId", 1234);
             found = cache.Get<String>(ns.GetNamespaced("userId", 1234));
             Assert.IsNull(found);

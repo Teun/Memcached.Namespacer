@@ -12,9 +12,9 @@ namespace CacheNamespacer
     {
         string GetNamespaced(string value);
         string GetNamespaced(string field, int value);
-        void ClearCache(string field, int value);
-        void ClearCache(string field);
-        void ClearCacheRolling();
+        void UpdateNamespace(string field, int value);
+        void UpdateNamespace(string field);
+        void FlushAllRolling();
     }
     public class Namespacer : INamespacer
     {
@@ -51,6 +51,10 @@ namespace CacheNamespacer
                 string evidenceKey = getEvidenceKey();
                 byte[] data =_evidence.ToBytes();
                 _cache.Store(StoreMode.Set, evidenceKey, data);
+                if(_evidence.Quality < 0.5 && _opt.ResetWhenEvidenceMuddled)
+                {
+                    FlushAllRolling();
+                }
             }
         }
 
@@ -60,22 +64,24 @@ namespace CacheNamespacer
             if(options!=null) _opt = options;
         }
 
-        public void ClearCache(string value)
+        public void UpdateNamespace(string value)
         {
             string storeKey = counterStoreKey(value);
             _cache.Increment(storeKey, this.Evidence.DefaultCounter + 1, 1);
-
-            Evidence.Witness(GetStringHash(value));
-            SaveEvidence();
+            if (_opt.OptimizeWithDefaultCounterAndEvidence)
+            {
+                Evidence.Witness(GetStringHash(value));
+                SaveEvidence();
+            }
         }
 
-        public void ClearCache(string field, int value)
+        public void UpdateNamespace(string field, int value)
         {
             string combined = combinedFieldAndValue(field, value);
-            ClearCache(combined);
+            UpdateNamespace(combined);
         }
 
-        public void ClearCacheRolling()
+        public void FlushAllRolling()
         {
             throw new NotImplementedException();
         }
@@ -144,7 +150,9 @@ namespace CacheNamespacer
 
         private uint getCounterStart()
         {
-            return (uint)(DateTime.Now - DateTime.Today).TotalMilliseconds;
+            DateTime now = Now();
+            
+            return (uint)(now - now.Date).TotalMilliseconds;
         }
 
         private string namespacedKey(string value, object counter)

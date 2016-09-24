@@ -38,6 +38,15 @@ namespace CacheNamespacer
             bits.CopyTo(res, 4);
             return res;
         }
+        public float Quality
+        {
+            get
+            {
+                int empty = bits.OfType<bool>().Count(b => !b);
+                float chanceFpPerCheck = 1 - (float)empty / bits.Count;
+                return 1 - chanceFpPerCheck*chanceFpPerCheck;
+            }
+        }
 
         public void Witness(int value)
         {
