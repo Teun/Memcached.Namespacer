@@ -83,7 +83,14 @@ namespace CacheNamespacer
 
         public void FlushAllRolling()
         {
-            throw new NotImplementedException();
+            if (_opt.OptimizeWithDefaultCounterAndEvidence)
+            {
+                _cache.FlushAll();
+            }
+            else
+            {
+                throw new InvalidOperationException("FlushAllRolling is only possible when OptimizeWithDefaultCounterAndEvidence=true");
+            }
         }
 
         public string GetNamespaced(string field, int value)
