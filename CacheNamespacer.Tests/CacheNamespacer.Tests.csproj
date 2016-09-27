@@ -60,6 +60,7 @@
   <ItemGroup>
     <Compile Include="BaseTest.cs" />
     <Compile Include="Evidence.cs" />
+    <Compile Include="RollingFlush.cs" />
     <Compile Include="Expiration.cs" />
     <Compile Include="ResistEjectedNamespace.cs" />
     <Compile Include="GetNamespaced.cs" />
