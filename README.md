@@ -53,7 +53,9 @@ This will change all keys that use this user ID. The old cached values will not 
 
 ## Decreasing overhead
 
-It is not very efficient to have to fetch multiple keys from memcached to read only one entry. There is a way to make this more efficient, especially if clearing is infrequent. What we do is keeping one central master counter that we can use for all namespaces, unless they have changed. This of cource transfers the problem to keeping track of touched namespaces. If namespace changes are uncommon, we can do this in an efficient way. We store some data with the default counter called Evidence. The amount of data used for evidence can change, but for the example, we'll use 8 bytes (64 bits). At start, the bytes are all blank: 0000000000000000. Now if we want to increase the namespace for user ID 12543, we will flip a bit that corresponds to this number. The easiest way it taking the modulo: 12543 % 64 = 63. So we set bit 63 to 1: 0000000000000001. From now on, we can still use the master counter for 63 out of 64 keys, but for the rest, we'll have to look up their specific counter from the cache. Actually, we can step up this game once more: we can set multiple bits for each namespace we touch. The first time this will flip 2 (or more) bits, so we use up our evidence more quickly, but the number of keys that touch those exact same two bits is much smaller. Memcached.Namespacer uses 2 bits per key. By default, it will use 80 bytes (640 bits) of evidence. This means that after changing 100 namespaces, you would still have to do a lookup for the actual namespace counter in only 7-8% of keys on average.
+It is not very efficient to have to fetch multiple keys from memcached to read only one entry. There is a way to make this more efficient, especially if clearing is infrequent. What we do is keeping one central master counter that we can use for all namespaces, unless they have changed. This of cource transfers the problem to keeping track of touched namespaces. If namespace changes are uncommon, we can do this in an efficient way. We store some data with the default counter called Evidence. The amount of data used for evidence can change, but for the example, we'll use 8 bytes (64 bits). At start, the bytes are all blank: 0000000000000000. Now if we want to increase the namespace for user ID 12543, we will flip a bit that corresponds to this number. The easiest way it taking the modulo: 12543 % 64 = 63. So we set bit 63 to 1: 0000000000000001. From now on, we can still use the master counter for 63 out of 64 keys, but for the rest, we'll have to look up their specific counter from the cache. 
+
+Actually, we can step up this game once more: we can set multiple bits for each namespace we touch (doing some magic with primes will ensure that these are typically not the same combinations). This will flip 2 (or more) bits, so we use up our evidence more quickly, but the number of keys that touch those exact same two bits is much smaller. Memcached.Namespacer uses 2 bits per key. By default, it will use 80 bytes (640 bits) of evidence. This means that after changing 100 namespaces, you would still have to do a lookup for the actual namespace counter in only 7-8% of keys on average.
 
 Interestingly, the use of a master counter allows us another interesting feature: rolling flushes. If most keys are determined by the master counter, we can use this mechanism to flush the whole cache (well, the namespace part of the cache) in a more gentle way than calling a FlushAll on your whole cache. 
 
@@ -68,4 +70,27 @@ Install Memcached.Namespacer using:
 
     Install-Package Memcached.Namespacer
 	
+Then store data in cache like this:
+
+    Namespacer ns = new Namespacer();
+    cache.Store(StoreMode.Set, ns.GetNamespaced("userId", 1234), userData);
+
+and read like this:
+
+    var user = cache.Get<UserData>(ns.GetNamespaced("userId", 1234));
+
+So then you can reset all cached data for this user doing:
+
+    ns.UpdateNamespace("userId", 1234);
+
+### Options
+
+You can configure a number of options in the constructor. It is improtant to have the exact same settings in all instances in use in your application (in all processes and on all servers).
+
+||Option||Description||Default||
+|Prefix|All keys used by Namespacer start with this string|___|
+|OptimizeWithDefaultCounterAndEvidence|See above under 'Decreasing overhead'|true|
+|EvidenceSize|Number of bytes used for evidence|80|
+|ResetWhenEvidenceMuddled|After too many namespaces have been reset, the optimization starts to deteriorate. If set to true, Namespacer will issue a rolling FlushAll|true|
+|RollingPeriod|When doing RollingFlushAll, this is the period over which the existing namespaced keys will expire|TimeSpan.FromSeconds(180)|
 
