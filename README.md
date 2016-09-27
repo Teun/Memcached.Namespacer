@@ -87,8 +87,9 @@ So then you can reset all cached data for this user doing:
 
 You can configure a number of options in the constructor. It is improtant to have the exact same settings in all instances in use in your application (in all processes and on all servers).
 
-||Option||Description||Default||
-|Prefix|All keys used by Namespacer start with this string|___|
+|Option|Description|Default|
+|------|-----------|-------|
+|Prefix|All keys used by Namespacer start with this string|\_\_\_ (three underscores)|
 |OptimizeWithDefaultCounterAndEvidence|See above under 'Decreasing overhead'|true|
 |EvidenceSize|Number of bytes used for evidence|80|
 |ResetWhenEvidenceMuddled|After too many namespaces have been reset, the optimization starts to deteriorate. If set to true, Namespacer will issue a rolling FlushAll|true|
