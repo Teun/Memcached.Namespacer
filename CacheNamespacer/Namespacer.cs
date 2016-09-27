@@ -34,8 +34,7 @@ namespace CacheNamespacer
                 byte[] evidenceData = _cache.Get<byte[]>(evidenceKey);
                 if (evidenceData == null)
                 {
-                    _evidence = new Evidence(getCounterStart(), _opt.EvidenceSize);
-                    SaveEvidence();
+                    GetFreshEvidence();
                 }
                 else
                 {
@@ -44,6 +43,13 @@ namespace CacheNamespacer
                 return _evidence;
             }
         }
+
+        private void GetFreshEvidence()
+        {
+            _evidence = new Evidence(getCounterStart(), _opt.EvidenceSize);
+            SaveEvidence();
+        }
+
         private void SaveEvidence()
         {
             if(_evidence != null)
@@ -56,6 +62,32 @@ namespace CacheNamespacer
                     FlushAllRolling();
                 }
             }
+        }
+
+        Evidence _oldEvidence;
+        bool _oldEvidenceChecked = false;
+
+        protected Evidence OldEvidence
+        {
+            get
+            {
+                if (_oldEvidence != null) return _oldEvidence;
+                if (_oldEvidence == null && _oldEvidenceChecked) return null;
+
+                string evidenceKey = getOldEvidenceKey();
+                byte[] evidenceData = _cache.Get<byte[]>(evidenceKey);
+                _oldEvidenceChecked = true;
+                if (evidenceData == null) return null;
+                _oldEvidence = new Evidence(evidenceData);
+                return _oldEvidence;
+            }
+        }
+        private void SaveOldEvidence(Evidence old)
+        {
+            string evidenceKey = getOldEvidenceKey();
+            byte[] data = old.ToBytes();
+            _cache.Store(StoreMode.Set, evidenceKey, data);
+            _oldEvidence = old;
         }
 
         public Namespacer(IMemcachedClient cache, NamespacerOptions options = null) 
@@ -85,7 +117,9 @@ namespace CacheNamespacer
         {
             if (_opt.OptimizeWithDefaultCounterAndEvidence)
             {
-                _cache.FlushAll();
+                var currEvidence = this.Evidence;
+                SaveOldEvidence(currEvidence);
+                GetFreshEvidence();
             }
             else
             {
@@ -120,8 +154,17 @@ namespace CacheNamespacer
 
         private uint optimizedGetCurrentCounter(string value)
         {
+            int hash = GetStringHash(value);
+            float hashRelative = ((float)Math.Abs(hash) / int.MaxValue);
             Evidence evidence = this.Evidence;
-            if (!evidence.For(GetStringHash(value)))
+            uint currentCounter = getCounterStart();
+            uint ageOfEvidenceInMillis = currentCounter - evidence.DefaultCounter;
+            uint allowedAgeInMillis = (uint)(_opt.RollingPeriod.TotalMilliseconds * hashRelative);
+            if (ageOfEvidenceInMillis < allowedAgeInMillis && this.OldEvidence != null)
+            {
+                evidence = this.OldEvidence;
+            }
+            if (!evidence.For(hash))
             {
                 return evidence.DefaultCounter;
             }
@@ -180,6 +223,10 @@ namespace CacheNamespacer
         private string getEvidenceKey()
         {
             return String.Format("{0}ev", _opt.Prefix);
+        }
+        private string getOldEvidenceKey()
+        {
+            return String.Format("{0}evold", _opt.Prefix);
         }
 
         protected virtual DateTime Now()
