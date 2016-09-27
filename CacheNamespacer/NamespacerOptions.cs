@@ -7,8 +7,7 @@ namespace CacheNamespacer
         public NamespacerOptions()
         {
             this.Prefix = "___";
-
-            this.OptimizeWithDefaultCounterAndEvidence = false;
+            this.OptimizeWithDefaultCounterAndEvidence = true;
             this.EvidenceSize = 80;
             ResetWhenEvidenceMuddled = true;
             RollingPeriod = TimeSpan.FromSeconds(180);

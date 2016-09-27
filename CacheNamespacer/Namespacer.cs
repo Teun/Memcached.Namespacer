@@ -170,7 +170,7 @@ namespace CacheNamespacer
             }
             // check evidence with value
             // return default or return current counter
-            return simpleGetCurrentCounter(value, getCounterStart());
+            return simpleGetCurrentCounter(value, evidence.DefaultCounter);
         }
 
         // found this hashing function at http://stackoverflow.com/questions/9545619/a-fast-hash-function-for-string-in-c-sharp

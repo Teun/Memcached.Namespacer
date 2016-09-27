@@ -9,6 +9,7 @@ namespace CacheNamespacer.Tests
         protected IMemcachedClient cache;
         protected TimeFakableNamespacer ns;
         protected ITime time;
+        private NamespacerOptions _opt;
 
         protected void init()
         {
@@ -17,13 +18,21 @@ namespace CacheNamespacer.Tests
         protected void initWithOptions(NamespacerOptions opt)
         {
             cache = new CacheMock();
-            time = ((ICacheMeta)cache).Time;
-            time.Set(new DateTime(2016, 1, 1, 12, 0, 0));
-            ns = new TimeFakableNamespacer(cache, opt);
-            ns.SetTime(time.Now());
-
+            _opt = opt;
+            setContext(new DateTime(2016, 3, 1, 12, 0, 0));
         }
 
+        private void setContext(DateTime newTime)
+        {
+            time = ((ICacheMeta)cache).Time;
+            time.Set(newTime);
+            ns = new TimeFakableNamespacer(cache, _opt);
+            ns.SetTime(time.Now());
+        }
+        protected void ResetContext()
+        {
+            setContext(time.Now());
+        }
         protected void Elapse(TimeSpan ts)
         {
             time.Proceed(ts);
