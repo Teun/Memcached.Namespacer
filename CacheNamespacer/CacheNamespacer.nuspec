@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>Memcached.Namespacer</id>
-    <version>0.5.001</version>
+    <version>0.5.002</version>
     <title>Memcached.Namespacer</title>
     <authors>Teun Duynstee</authors>
     <owners>Teun Duynstee</owners>
@@ -12,6 +12,7 @@
     <description>Namespacing of cache keys allows you to invalidate part of your cache, ie. all key for a specific user ID.</description>
     <copyright>Copyright 2016</copyright>
     <tags>caching memcached namespacing flushing key-management</tags>
+    
     <dependencies>
       <dependency id="EnyimMemcached" version="2.16.0" />
     </dependencies>
