@@ -25,6 +25,43 @@ namespace CacheNamespacer.Tests
             Assert.AreEqual("test", stored);
         }
         [TestMethod]
+        public void ResetWhenEvidenceMuddled_Works()
+        {
+            int bytes = 8;
+            initWithOptions(new NamespacerOptions { EvidenceSize = bytes, ResetWhenEvidenceMuddled=true });
+
+            cache.Store(StoreMode.Set, ns.GetNamespaced("prod", 1), "bla");
+            for (int i = 0; i < 1000; i++)
+            {
+                Elapse(TimeSpan.FromMilliseconds(1));
+                ns.UpdateNamespace("user", i);
+                if(ns.Evidence.Quality == 1)
+                {
+                    Console.WriteLine("Evidence got softly reset after {0} namepsace changes (using {1} bytes of evidence)", i, bytes);
+                    break;
+                }
+            }
+            Assert.AreEqual("bla", cache.Get(ns.GetNamespaced("prod", 1)));
+            Elapse(TimeSpan.FromSeconds(200));
+            Assert.AreNotEqual("bla", cache.Get(ns.GetNamespaced("prod", 1)));
+        }
+        [TestMethod]
+        public void ResetWhenEvidenceMuddledSetTrue_WillEventuallyNotWorkAtAll()
+        {
+            initWithOptions(new NamespacerOptions { ResetWhenEvidenceMuddled = false });
+
+            cache.Store(StoreMode.Set, ns.GetNamespaced("prod", 1), "bla");
+            for (int i = 0; i < 1000; i++)
+            {
+                Elapse(TimeSpan.FromMilliseconds(1));
+                ns.UpdateNamespace("user", i);
+            }
+            Assert.AreEqual("bla", cache.Get(ns.GetNamespaced("prod", 1)));
+            Elapse(TimeSpan.FromSeconds(200));
+            Assert.AreEqual("bla", cache.Get(ns.GetNamespaced("prod", 1)));
+            Assert.IsTrue(ns.Evidence.Quality < 0.1);
+        }
+        [TestMethod]
         public void FalsePositives_StillWork()
         {
             initWithOptions(new NamespacerOptions { EvidenceSize = 8 });
